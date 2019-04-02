@@ -1,0 +1,22 @@
+{
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@zeit/next-css": "^1.0.1",
+    "art": "^0.10.3",
+    "isomorphic-unfetch": "^3.0.0",
+    "mdbreact": "^4.11.1",
+    "next": "^8.0.3",
+    "next-compose-plugins": "^2.1.1",
+    "next-fonts": "^0.17.0",
+    "next-images": "^1.1.1",
+    "preact": "^8.4.2",
+    "qrcode.react": "^0.9.3",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-qr-code": "^0.1.3"
+  }
+}

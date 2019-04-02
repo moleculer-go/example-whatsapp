@@ -1,0 +1,48 @@
+package services_test
+
+import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	. "github.com/moleculer-go/example-whatsapp/services"
+	"github.com/moleculer-go/moleculer"
+	"github.com/moleculer-go/moleculer/broker"
+)
+
+var logLevel = "info"
+var _ = Describe("Services", func() {
+
+	bkr := broker.New(&moleculer.Config{
+		DiscoverNodeID: func() string { return "node_services" },
+		LogLevel:       logLevel,
+	})
+	// adapter := &db.MemoryAdapter{
+	// 	Table:""
+	// }
+	// userService := moleculer.Service{
+	// 	Name: "user",
+	// 	Settings: map[string]interface{}{
+	// 		"populates": map[string]interface{}{
+	// 			"friends": "user.get",
+	// 			"master":  "user.get",
+	// 		},
+	// 	},
+	// 	Mixins: []moleculer.Mixin{db.Mixin(adapter)},
+	// }
+	Describe("Services", func() {
+
+		BeforeEach(func() {
+			bkr.AddService(Chat)
+			bkr.Start()
+		})
+
+		AfterEach(func() {
+			bkr.Stop()
+		})
+
+		It("should list contacts", func() {
+
+			Expect(true).Should(BeTrue())
+		})
+	})
+})
