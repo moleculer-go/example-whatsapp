@@ -12,70 +12,41 @@ import {
   MDBCardImage,
   MDBBtn
 } from "mdbreact";
-import QRCode from "qrcode.react";
-
-var newId = function(size = 12) {
-  const ALPHABET =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  var rtn = "";
-  for (var i = 0; i < size; i++) {
-    rtn += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
-  }
-  return rtn;
-};
-
-const localStorage = (function() {
-  if (typeof window === "undefined") {
-    const store = {};
-    return {
-      setItem: function(key, value) {
-        store[key] = value;
-      },
-      getItem: function(key) {
-        return store[key];
-      }
-    };
-  } else {
-    return window.localStorage;
-  }
-})();
-
-export default class Contacts extends React.Component {
-  static async getInitialProps() {
-    if (!localStorage.getItem("clientToken")) {
-      return { validSession: false };
+import withAuth from "../lib/withAuth";
+class Contacts extends React.Component {
+  static async getInitialProps(ctx) {
+    let contacts = {};
+    if (ctx.session) {
+      contacts = await (await fetch(
+        `http://localhost:3100/api/contacts/find?deviceToken=${ctx.deviceToken}`
+      )).json();
+      console.log(
+        "contacts -> ",
+        contacts,
+        " ctx.deviceToken: ",
+        ctx.deviceToken
+      );
     }
-    const res = await fetch(
-      "http://localhost:3100/api/chat/contacts?token=" +
-        localStorage.getItem("deviceToken"),
-      { mode: "cors" }
-    );
-    const data = await res.json();
-    console.log(data);
-
-    return { data };
+    return { contacts };
   }
 
   renderContacts() {
-    return (
-      <div>
-        <br />
-      </div>
-    );
+    const { contacts } = this.props;
+    if (!contacts || !contacts.map) {
+      return <div>No contacts found :( </div>;
+    }
+    return contacts.map(item => {
+      return (
+        <div>
+          Name: {item.name}
+          <br />
+          Number: {item.number}
+        </div>
+      );
+    });
   }
 
   render() {
-    if (!this.props.validSession) {
-      return (
-        <div>
-          You Need to Login first !
-          <br />
-          <Link href="/generateCode">
-            <MDBBtn>Login</MDBBtn>
-          </Link>
-        </div>
-      );
-    }
     return (
       <MDBContainer>
         <MDBCard
@@ -85,9 +56,14 @@ export default class Contacts extends React.Component {
           <MDBCardBody>
             <MDBCardTitle>Contacts</MDBCardTitle>
             {this.renderContacts()}
+            <Link href="/newContact">
+              <MDBBtn>New Contact</MDBBtn>
+            </Link>
           </MDBCardBody>
         </MDBCard>
       </MDBContainer>
     );
   }
 }
+
+export default withAuth(Contacts);

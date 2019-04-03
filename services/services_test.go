@@ -16,20 +16,7 @@ var _ = Describe("Services", func() {
 		DiscoverNodeID: func() string { return "node_services" },
 		LogLevel:       logLevel,
 	})
-	// adapter := &db.MemoryAdapter{
-	// 	Table:""
-	// }
-	// userService := moleculer.Service{
-	// 	Name: "user",
-	// 	Settings: map[string]interface{}{
-	// 		"populates": map[string]interface{}{
-	// 			"friends": "user.get",
-	// 			"master":  "user.get",
-	// 		},
-	// 	},
-	// 	Mixins: []moleculer.Mixin{db.Mixin(adapter)},
-	// }
-	Describe("Services", func() {
+	Describe("Chat", func() {
 
 		BeforeEach(func() {
 			bkr.AddService(Chat)
@@ -41,7 +28,8 @@ var _ = Describe("Services", func() {
 		})
 
 		It("should list contacts", func() {
-
+			//y5Z03am4MmN3
+			bkr.Call("")
 			Expect(true).Should(BeTrue())
 		})
 	})

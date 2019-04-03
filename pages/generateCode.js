@@ -13,50 +13,18 @@ import {
   MDBBtn
 } from "mdbreact";
 import QRCode from "qrcode.react";
-
-var newId = function(size = 12) {
-  const ALPHABET =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  var rtn = "";
-  for (var i = 0; i < size; i++) {
-    rtn += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
-  }
-  return rtn;
-};
-
-const localStorage = (function() {
-  if (typeof window === "undefined") {
-    const store = {};
-    return {
-      setItem: function(key, value) {
-        store[key] = value;
-      },
-      getItem: function(key) {
-        return store[key];
-      }
-    };
-  } else {
-    return window.localStorage;
-  }
-})();
-
-export default class GenerateCode extends React.Component {
-  static async getInitialProps() {
-    if (localStorage.getItem("clientToken")) {
-      return { clientToken: localStorage.getItem("clientToken") };
+import withAuth from "../lib/withAuth";
+class GenerateCode extends React.Component {
+  static async getInitialProps(ctx) {
+    if (ctx.session) {
+      return {};
     }
-    if (!localStorage.getItem("deviceToken")) {
-      localStorage.setItem("deviceToken", newId());
-    }
+
     const res = await fetch(
-      "http://localhost:3100/api/login/newSession?token=" +
-        localStorage.getItem("deviceToken"),
+      `http://localhost:3100/api/login/newSession?token=${ctx.deviceToken}`,
       { mode: "cors" }
     );
     const { code, clientToken } = await res.json();
-    if (clientToken) {
-      localStorage.setItem("clientToken", clientToken);
-    }
     return { code, clientToken };
   }
 
@@ -67,8 +35,7 @@ export default class GenerateCode extends React.Component {
           <QRCode size={450} level="M" value={this.props.code} />
         </div>
       );
-    }
-    if (this.props.clientToken) {
+    } else {
       return (
         <MDBContainer>
           Already Logged In ..
@@ -90,7 +57,6 @@ export default class GenerateCode extends React.Component {
         >
           <MDBCardBody>
             {this.renderCode()}
-
             <MDBCardTitle className="center">Scan on your Phone</MDBCardTitle>
           </MDBCardBody>
         </MDBCard>
@@ -98,3 +64,5 @@ export default class GenerateCode extends React.Component {
     );
   }
 }
+
+export default withAuth(GenerateCode, { loginRequired: false });
