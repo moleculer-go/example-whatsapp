@@ -52,7 +52,7 @@ function Home() {
               </p>
             </div>
             <div className="flex-row">
-              <Link href="/generateCode">
+              <Link href="/login">
                 <MDBBtn>Login</MDBBtn>
               </Link>
             </div>

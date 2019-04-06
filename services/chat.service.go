@@ -1,41 +1,39 @@
 package services
 
 import (
+	"github.com/Rhymen/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
+	"github.com/moleculer-go/moleculer/payload"
 )
 
 var Chat = moleculer.Service{
-	Name:    "chat",
+	Name: "chat",
 	Actions: []moleculer.Action{
-		// {
-		// 	Name: "contacts",
-		// 	Handler: func(ctx moleculer.Context, params moleculer.Payload) interface{} {
-		// 		session := <-ctx.Call("concts.find", map[string]interface{}{
-		// 			"query": map[string]interface{}{
-		// 				"deviceToken": token,
-		// 			},
-		// 		})
-		// 		if session.IsError() {
-		// 			return nil, session.Error()
-		// 		}
+		{
+			Name: "sendMessage",
+			Handler: func(ctx moleculer.Context, params moleculer.Payload) interface{} {
+				wac, _, err := validConnection(ctx, params)
+				if err != nil {
+					ctx.Logger().Error("Cannot send message - connection error: ", err)
+					return payload.Error("Cannot send message - connection error: ", err)
+				}
+				message := params.Get("message").String()
+				target := params.Get("target").String()
 
-		// 		wac, _, err := validConnection(ctx, params)
-		// 		if err != nil {
-		// 			return payload.Error("Cannot list contacts! - error: ", err)
-		// 		}
-
-		// 		res, err := wac.Contacts()
-		// 		if err != nil {
-		// 			ctx.Logger().Error("Error trying to load contacts - error: ", err)
-		// 			return payload.Error("Error trying to load contacts - error: ", err)
-		// 		}
-
-		// 		fmt.Println("Contacts() result.Attributes: ", res.Attributes)
-		// 		fmt.Println("Contacts() result.Content: ", res.Content)
-		// 		fmt.Println("Contacts() result.Description: ", res.Description)
-
-		// 		return []map[string]interface{}{}
-		// 	},
-		// },
+				err = wac.Send(whatsapp.TextMessage{
+					Info: whatsapp.MessageInfo{
+						RemoteJid: target + "@s.whatsapp.net",
+					},
+					Text: message,
+				})
+				if err != nil {
+					ctx.Logger().Error("error sending message: ", err)
+					return payload.Error("Cannot send message! - error: ", err.Error())
+				}
+				return map[string]interface{}{
+					"result": "message sent",
+				}
+			},
+		},
 	},
 }

@@ -44,7 +44,7 @@ func (w *mongoWriter) Write(p []byte) (n int, err error) {
 //save document in mongo
 func (w *mongoWriter) Close() error {
 	sessionMap := w.session.RawMap()
-	sessionMap["content"] = w.bts
+	sessionMap["content"] = string(w.bts)
 	r := <-w.ctx.Call("session.update", sessionMap)
 	if r.IsError() {
 		return r.Error()
@@ -77,14 +77,7 @@ func mongoSessionWriter(ctx moleculer.Context, token string) (io.WriteCloser, er
 	if session.IsArray() {
 		session = session.First()
 	}
-	var bts []byte
-	if session.Get("content").Exists() {
-		cbytes, ok := session.Get("content").Value().([]byte)
-		if ok {
-			bts = cbytes
-		}
-	}
-	return &mongoWriter{ctx, session, bts}, nil
+	return &mongoWriter{ctx, session, []byte{}}, nil
 }
 
 func mongoSessionReader(ctx moleculer.Context, token string) (io.Reader, error) {
@@ -93,15 +86,12 @@ func mongoSessionReader(ctx moleculer.Context, token string) (io.Reader, error) 
 			"deviceToken": token,
 		},
 	})
-	ctx.Logger().Debug("mongoSessionWriter() session found: ", session, " deviceToken: ", token)
 	if session.IsArray() && session.Len() > 0 {
 		session = session.First()
 	}
 	if session.Get("content").Exists() {
-		bts, ok := session.Get("content").Value().([]byte)
-		if ok {
-			return bytes.NewReader(bts), nil
-		}
+		content := session.Get("content").String()
+		return bytes.NewReader([]byte(content)), nil
 	}
 	return bytes.NewReader([]byte{}), nil
 }
@@ -134,6 +124,7 @@ func readSession(ctx moleculer.Context, token string) (whatsapp.Session, error) 
 	decoder := gob.NewDecoder(reader)
 	err = decoder.Decode(&session)
 	if err != nil {
+		ctx.Logger().Error("Error trying to decode session object - error: ", err)
 		return session, err
 	}
 	return session, nil
@@ -153,21 +144,23 @@ func writeSession(ctx moleculer.Context, session whatsapp.Session, token string)
 
 // validConnection return a valid whatsapp connection
 func validConnection(ctx moleculer.Context, params moleculer.Payload) (*whatsapp.Conn, whatsapp.Session, error) {
-	token := params.Get("token").String()
-	wac, err := whatsapp.NewConn(25 * time.Second)
+	token := params.Get("deviceToken").String()
+	wac, err := whatsapp.NewConn(60 * time.Second)
 	if err != nil {
 		ctx.Logger().Error("error creating connection: ", err)
 		return nil, whatsapp.Session{}, err
 	}
 	session, err := readSession(ctx, token)
 	if err != nil {
+		ctx.Logger().Error("error reading session - error: ", err)
 		return wac, session, err
 	}
 	session, err = wac.RestoreWithSession(session)
 	if err != nil {
+		ctx.Logger().Error("error restoring session - error: ", err)
 		return wac, session, err
 	}
-	ctx.Logger().Debug("session restored!")
+	ctx.Logger().Debug("Session restored!")
 	return wac, session, nil
 }
 
@@ -185,19 +178,22 @@ var Login = moleculer.Service{
 				qr := make(chan string)
 
 				go func() {
+					deviceToken := params.Get("deviceToken").String()
 					session, err = wac.Login(qr)
 					if err != nil {
 						ctx.Logger().Error("error during login: ", err)
+						ctx.Emit("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Login error: " + err.Error()})
 						return
 					}
-					token := params.Get("token").String()
-					ctx.Logger().Debug("login was succesfull ! saving session with token: ", token)
-					err = writeSession(ctx, session, token)
+					ctx.Logger().Debug("login was succesfull ! saving session with deviceToken: ", deviceToken)
+					err = writeSession(ctx, session, deviceToken)
 					if err != nil {
 						ctx.Logger().Error("error saving session: ", err)
+						ctx.Emit("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Could not save session!"})
 						return
 					}
 					ctx.Logger().Debug("session saved succesfull!")
+					ctx.Emit("login.success", map[string]interface{}{"deviceToken": deviceToken})
 
 				}()
 				code := <-qr

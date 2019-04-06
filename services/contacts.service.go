@@ -11,7 +11,7 @@ import (
 var Contacts = moleculer.Service{
 	Name: "contacts",
 	Settings: map[string]interface{}{
-		"fields": []string{"id", "name", "whatsAppId", "deviceToken"},
+		"fields": []string{"id", "name", "mobile", "whatsAppId", "deviceToken"},
 	},
 	Mixins: []moleculer.Mixin{db.Mixin(&db.MongoAdapter{
 		MongoURL:   MongoURL,

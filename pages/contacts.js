@@ -9,23 +9,21 @@ import {
   MDBContainer,
   MDBCardBody,
   MDBCardTitle,
-  MDBCardImage,
+  MDBListGroup,
+  MDBListGroupItem,
   MDBBtn
 } from "mdbreact";
 import withAuth from "../lib/withAuth";
+import { postRequest } from "../lib/request";
 class Contacts extends React.Component {
   static async getInitialProps(ctx) {
-    let contacts = {};
+    let contacts = [];
     if (ctx.session) {
-      contacts = await (await fetch(
-        `http://localhost:3100/api/contacts/find?deviceToken=${ctx.deviceToken}`
-      )).json();
-      console.log(
-        "contacts -> ",
-        contacts,
-        " ctx.deviceToken: ",
-        ctx.deviceToken
-      );
+      const { deviceToken } = ctx;
+      contacts = await postRequest("/api/contacts/find", {
+        query: { deviceToken }
+      });
+      console.log("contacts -> ", contacts, " ctx.deviceToken: ", deviceToken);
     }
     return { contacts };
   }
@@ -37,11 +35,20 @@ class Contacts extends React.Component {
     }
     return contacts.map(item => {
       return (
-        <div>
-          Name: {item.name}
-          <br />
-          Number: {item.number}
-        </div>
+        <MDBListGroupItem key={item.id}>
+          <div className="d-flex w-100 justify-content-between">
+            <h6 className="mb-1">Name:</h6>
+            {item.name}
+          </div>
+          <div className="d-flex w-100 justify-content-between">
+            <h6 className="mb-1">Number:</h6>
+            {item.mobile}
+          </div>
+          <Link href={`/messages?target=${item.mobile}`}>
+            <MDBBtn>Messages</MDBBtn>
+          </Link>
+          <hr />
+        </MDBListGroupItem>
       );
     });
   }
@@ -55,7 +62,11 @@ class Contacts extends React.Component {
         >
           <MDBCardBody>
             <MDBCardTitle>Contacts</MDBCardTitle>
-            {this.renderContacts()}
+            <MDBContainer>
+              <MDBListGroup style={{ width: "22rem" }}>
+                {this.renderContacts()}
+              </MDBListGroup>
+            </MDBContainer>
             <Link href="/newContact">
               <MDBBtn>New Contact</MDBBtn>
             </Link>

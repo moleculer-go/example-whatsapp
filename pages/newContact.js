@@ -13,33 +13,22 @@ import {
   MDBBtn,
   MDBInput
 } from "mdbreact";
-import LoginPanel from "./login.panel";
 import withAuth from "../lib/withAuth";
-
+import { postRequest } from "../lib/request";
 class NewContact extends React.Component {
-  static async getInitialProps({ deviceToken }) {
-    return { deviceToken };
-  }
-
-  async saveContact(e) {
-    console.log("saving contact...");
-    const { name, mobile, deviceToken } = this.props;
-    const contact = { name, mobile, deviceToken };
-    const res = await fetch("http://localhost:3100/api/contacts/create", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(contact)
-    });
-    const result = await res.json();
+  async saveContact(data) {
+    console.log("saving contact... data: ", data);
+    console.log("props ", this.props);
+    const { deviceToken } = this.props;
+    const { id, name, mobile } = data;
+    const contact = { id, name, mobile, deviceToken };
+    const result = await postRequest("/api/contacts/create", contact);
     console.log("result: ", result);
-    this.setState({ ...this.state, saved: true });
+    this.setState({ ...this.state, ...result, saved: true });
   }
 
   renderMsgs() {
-    if (this.state && this.state.saved) {
+    if (this.state.saved) {
       return (
         <div>
           <hr />
@@ -51,7 +40,21 @@ class NewContact extends React.Component {
     return <div />;
   }
 
+  renderButtons() {
+    if (this.state.saved) {
+      return (
+        <Link href="/contacts">
+          <MDBBtn>Back</MDBBtn>
+        </Link>
+      );
+    }
+    return (
+      <MDBBtn onClick={e => this.saveContact(this.state)}>Save Contact</MDBBtn>
+    );
+  }
+
   render() {
+    this.state = this.state || {};
     return (
       <MDBContainer>
         <MDBCard
@@ -59,7 +62,7 @@ class NewContact extends React.Component {
           style={{ width: "33rem", marginTop: "1rem" }}
         >
           <MDBCardBody>
-            <MDBCardTitle>New Contacts</MDBCardTitle>
+            <MDBCardTitle>New Contact</MDBCardTitle>
             {this.renderMsgs()}
             <div className="grey-text">
               <MDBInput
@@ -70,7 +73,10 @@ class NewContact extends React.Component {
                 validate
                 error="wrong"
                 success="right"
-                value={this.props.name}
+                value={this.state.name}
+                onChange={e =>
+                  this.setState({ ...this.state, name: e.target.value })
+                }
               />
               <MDBInput
                 label="Mobile"
@@ -80,10 +86,13 @@ class NewContact extends React.Component {
                 validate
                 error="wrong"
                 success="right"
-                value={this.props.mobile}
+                value={this.state.mobile}
+                onChange={e =>
+                  this.setState({ ...this.state, mobile: e.target.value })
+                }
               />
             </div>
-            <MDBBtn onClick={e => this.saveContact(e)}>Save Contact</MDBBtn>
+            {this.renderButtons()}
           </MDBCardBody>
         </MDBCard>
       </MDBContainer>
