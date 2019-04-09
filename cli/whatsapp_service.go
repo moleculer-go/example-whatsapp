@@ -28,6 +28,14 @@ func main() {
 		&moleculer.Config{LogLevel: "debug"},
 		func(broker *broker.ServiceBroker, cmd *cobra.Command) {
 			fmt.Println("*** setup broker handler called !")
+
+			//2 options for the gateway API
+			// gatewaySvc := gateway.HttpService(getGatewayConfig(cmd))
+			// gatewaySvc.Mixins = []moleculer.Mixin{gateway.WebSocketsMixin}
+			// broker.AddService(gatewaySvc)
+
+			// broker.AddService(gateway.WebSocketService(gateway.HttpService(getGatewayConfig(cmd)))
+
 			broker.AddService(gateway.Service(getGatewayConfig(cmd)))
 			broker.AddService(services.Login)
 			broker.AddService(services.Chat)

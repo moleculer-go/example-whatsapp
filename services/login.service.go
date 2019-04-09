@@ -182,18 +182,18 @@ var Login = moleculer.Service{
 					session, err = wac.Login(qr)
 					if err != nil {
 						ctx.Logger().Error("error during login: ", err)
-						ctx.Emit("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Login error: " + err.Error()})
+						ctx.Broadcast("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Login error: " + err.Error()})
 						return
 					}
 					ctx.Logger().Debug("login was succesfull ! saving session with deviceToken: ", deviceToken)
 					err = writeSession(ctx, session, deviceToken)
 					if err != nil {
 						ctx.Logger().Error("error saving session: ", err)
-						ctx.Emit("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Could not save session!"})
+						ctx.Broadcast("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Could not save session!"})
 						return
 					}
 					ctx.Logger().Debug("session saved succesfull!")
-					ctx.Emit("login.success", map[string]interface{}{"deviceToken": deviceToken})
+					ctx.Broadcast("login.success", map[string]interface{}{"deviceToken": deviceToken})
 
 				}()
 				code := <-qr

@@ -15,15 +15,16 @@ import {
 import QRCode from "qrcode.react";
 import withAuth from "../lib/withAuth";
 import { getRequest, subscriber } from "../lib/request";
+
 class GenerateCode extends React.Component {
   static async getInitialProps(ctx) {
     if (ctx.session) {
       return {};
     }
-    const { code, clientToken } = await getRequest(
+    const { code } = await getRequest(
       `/api/login/newSession?deviceToken=${ctx.deviceToken}`
     );
-    return { code, clientToken };
+    return { code };
   }
 
   async componentDidMount() {
@@ -37,8 +38,6 @@ class GenerateCode extends React.Component {
       console.log("login.fail event params: ", params);
       this.setState({ ...this.state, loginState: "fail" });
     });
-
-    console.log("subscribes done !");
   }
 
   renderCode() {
@@ -56,9 +55,11 @@ class GenerateCode extends React.Component {
       return (
         <MDBContainer>
           Login falied. :(
-          <Link href="/login">
+          <br />
+          The QR code might have timed out. Next time be ready to scan.
+          <a onClick={() => window.location.reload(false)}>
             <MDBBtn>Try Again</MDBBtn>
-          </Link>
+          </a>
         </MDBContainer>
       );
     } else if (this.props.code) {
