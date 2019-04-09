@@ -14,7 +14,7 @@ import {
   MDBBtn
 } from "mdbreact";
 import withAuth from "../lib/withAuth";
-import { postRequest } from "../lib/request";
+import { postRequest, subscriber } from "../lib/request";
 class Contacts extends React.Component {
   static async getInitialProps(ctx) {
     let contacts = [];
@@ -26,6 +26,41 @@ class Contacts extends React.Component {
       console.log("contacts -> ", contacts, " ctx.deviceToken: ", deviceToken);
     }
     return { contacts };
+  }
+
+  storeMessages() {
+    localStorage.setItem("messages", JSON.stringify(this.state.messages));
+  }
+
+  restoreMessages() {
+    const value = localStorage.getItem("messages");
+    if (value == null || value == "") {
+      return;
+    }
+    const messages = JSON.parse(value);
+    this.setState({ ...this.state, messages });
+  }
+
+  async componentDidMount() {
+    this.setState({ messages: new Array() });
+    const subscribe = subscriber("deviceToken", this.props.deviceToken);
+    await subscribe("chat.message", msg => {
+      console.log("chat.message event msg: ", msg);
+      const messages = this.state.messages || new Array();
+      messages.push(msg);
+      this.setState({ ...this.state, messages });
+      this.storeMessages();
+    });
+  }
+
+  countMessagesByContact(contactId) {
+    const count = 0;
+    if (this.state && this.state.messages) {
+      count = this.state.messages
+        .filter(m => m.contactId === contactId)
+        .length();
+    }
+    return <div>{count}</div>;
   }
 
   renderContacts() {
@@ -45,7 +80,7 @@ class Contacts extends React.Component {
             {item.mobile}
           </div>
           <Link href={`/messages?target=${item.mobile}`}>
-            <MDBBtn>Messages</MDBBtn>
+            <MDBBtn>Messages [{this.countMessagesByContact(item.id)}]</MDBBtn>
           </Link>
           <hr />
         </MDBListGroupItem>
