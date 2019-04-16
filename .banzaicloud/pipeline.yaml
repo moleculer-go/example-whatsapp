@@ -1,3 +1,7 @@
+cluster:
+  name: moleculer-goluq3
+  secret:
+    name: moleculergo
 pipeline:
   backend:
     image: golang
