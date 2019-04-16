@@ -5,7 +5,7 @@ import (
 
 	"github.com/moleculer-go/example-whatsapp/services"
 	"github.com/moleculer-go/moleculer"
-	gateway "github.com/moleculer-go/moleculer-web"
+	"github.com/moleculer-go/moleculer-web/websocket"
 	"github.com/moleculer-go/moleculer/broker"
 	"github.com/moleculer-go/moleculer/cli"
 	"github.com/spf13/cobra"
@@ -29,18 +29,18 @@ func main() {
 		func(broker *broker.ServiceBroker, cmd *cobra.Command) {
 			fmt.Println("*** setup broker handler called !")
 
-			//2 options for the gateway API
-			// gatewaySvc := gateway.HttpService(getGatewayConfig(cmd))
-			// gatewaySvc.Mixins = []moleculer.Mixin{gateway.WebSocketsMixin}
-			// broker.AddService(gatewaySvc)
+			broker.Publish(gateway.HttpService{
+				Settings: getGatewayConfig(cmd),
+				Mixins: []gateway.GatewayMixin{
+					websocket.WebSocketMixin{},
+					websocket.WebSocketEventsMixin{},
+				},
+			})
 
-			// broker.AddService(gateway.WebSocketService(gateway.HttpService(getGatewayConfig(cmd)))
-
-			broker.AddService(gateway.Service(getGatewayConfig(cmd)))
-			broker.AddService(services.Login)
-			broker.AddService(services.Chat)
-			broker.AddService(services.Session)
-			broker.AddService(services.Contacts)
+			broker.Publish(services.Login)
+			broker.Publish(services.Chat)
+			broker.Publish(services.Session)
+			broker.Publish(services.Contacts)
 			broker.Start()
 		})
 }

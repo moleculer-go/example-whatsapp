@@ -164,7 +164,7 @@ func validConnection(ctx moleculer.Context, params moleculer.Payload) (*whatsapp
 	return wac, session, nil
 }
 
-var Login = moleculer.Service{
+var Login = moleculer.ServiceSchema{
 	Name: "login",
 	Actions: []moleculer.Action{
 		{

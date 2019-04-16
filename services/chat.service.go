@@ -6,7 +6,7 @@ import (
 	"github.com/moleculer-go/moleculer/payload"
 )
 
-var Chat = moleculer.Service{
+var Chat = moleculer.ServiceSchema{
 	Name: "chat",
 	Actions: []moleculer.Action{
 		{

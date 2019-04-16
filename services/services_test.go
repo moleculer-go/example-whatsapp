@@ -19,7 +19,7 @@ var _ = Describe("Services", func() {
 	Describe("Chat", func() {
 
 		BeforeEach(func() {
-			bkr.AddService(Chat)
+			bkr.Publish(Chat)
 			bkr.Start()
 		})
 
@@ -29,7 +29,7 @@ var _ = Describe("Services", func() {
 
 		It("should list contacts", func() {
 			//y5Z03am4MmN3
-			bkr.Call("")
+			//bkr.Call("")
 			Expect(true).Should(BeTrue())
 		})
 	})

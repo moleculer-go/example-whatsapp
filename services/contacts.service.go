@@ -8,7 +8,7 @@ import (
 	"github.com/moleculer-go/moleculer"
 )
 
-var Contacts = moleculer.Service{
+var Contacts = moleculer.ServiceSchema{
 	Name: "contacts",
 	Settings: map[string]interface{}{
 		"fields": []string{"id", "name", "mobile", "whatsAppId", "deviceToken"},
