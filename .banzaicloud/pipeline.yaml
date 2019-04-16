@@ -1,0 +1,13 @@
+pipeline:
+  backend:
+    image: golang
+    commands:
+      - go get ./cli
+      - go build ./cli
+      - go test ./cli
+
+  frontend:
+    image: node:6
+    commands:
+      - npm install
+      - npm build
