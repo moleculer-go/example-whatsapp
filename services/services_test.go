@@ -1,36 +1,27 @@
-package services_test
+package services
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	. "github.com/moleculer-go/example-whatsapp/services"
-	"github.com/moleculer-go/moleculer"
-	"github.com/moleculer-go/moleculer/broker"
 )
 
-var logLevel = "info"
 var _ = Describe("Services", func() {
 
-	bkr := broker.New(&moleculer.Config{
-		DiscoverNodeID: func() string { return "node_services" },
-		LogLevel:       logLevel,
-	})
-	Describe("Chat", func() {
+	FDescribe("Contacts", func() {
+		It("contactType should recognized groups", func() {
+			Expect(contactType("642102923972-1488714470@g.us")).Should(Equal("group"))
 
-		BeforeEach(func() {
-			bkr.Publish(Chat)
-			bkr.Start()
 		})
 
-		AfterEach(func() {
-			bkr.Stop()
+		It("contactType should recognized person", func() {
+			Expect(contactType("64221619450@s.whatsapp.net")).Should(Equal("person"))
+
 		})
 
-		It("should list contacts", func() {
-			//y5Z03am4MmN3
-			//bkr.Call("")
-			Expect(true).Should(BeTrue())
+		It("contactType should not be recognized", func() {
+			Expect(contactType("sdfsdfsdf")).Should(Equal("unknown"))
+
 		})
 	})
+
 })

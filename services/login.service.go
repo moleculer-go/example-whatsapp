@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/user"
-	"time"
 
 	"github.com/moleculer-go/moleculer/payload"
 
@@ -142,41 +141,18 @@ func writeSession(ctx moleculer.Context, session whatsapp.Session, token string)
 	return nil
 }
 
-// validConnection return a valid whatsapp connection
-func validConnection(ctx moleculer.Context, params moleculer.Payload) (*whatsapp.Conn, whatsapp.Session, error) {
-	token := params.Get("deviceToken").String()
-	wac, err := whatsapp.NewConn(60 * time.Second)
-	if err != nil {
-		ctx.Logger().Error("error creating connection: ", err)
-		return nil, whatsapp.Session{}, err
-	}
-	session, err := readSession(ctx, token)
-	if err != nil {
-		ctx.Logger().Error("error reading session - error: ", err)
-		return wac, session, err
-	}
-	session, err = wac.RestoreWithSession(session)
-	if err != nil {
-		ctx.Logger().Error("error restoring session - error: ", err)
-		return wac, session, err
-	}
-	ctx.Logger().Debug("Session restored!")
-	return wac, session, nil
-}
-
 var Login = moleculer.ServiceSchema{
 	Name: "login",
 	Actions: []moleculer.Action{
 		{
 			Name: "newSession",
 			Handler: func(ctx moleculer.Context, params moleculer.Payload) interface{} {
-				wac, session, err := validConnection(ctx, params)
+				wac, session, err := validSession(ctx, params.Get("deviceToken").String())
 				if err == nil {
 					return payload.Empty().Add("clientToken", session.ClientToken)
 				}
 				ctx.Logger().Debug("No session, will generate a new scan code! - error: ", err)
 				qr := make(chan string)
-
 				go func() {
 					deviceToken := params.Get("deviceToken").String()
 					session, err = wac.Login(qr)
@@ -192,9 +168,9 @@ var Login = moleculer.ServiceSchema{
 						ctx.Broadcast("login.fail", map[string]interface{}{"deviceToken": deviceToken, "error": "Could not save session!"})
 						return
 					}
+					saveCache(deviceToken, wac, &session)
 					ctx.Logger().Debug("session saved succesfull!")
 					ctx.Broadcast("login.success", map[string]interface{}{"deviceToken": deviceToken})
-
 				}()
 				code := <-qr
 				return payload.Empty().Add("code", code)

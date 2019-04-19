@@ -1,0 +1,24 @@
+apiVersion: v1
+clusters:
+  - cluster:
+      certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRFNU1EUXhOakEwTlRFek5Wb1hEVEk1TURReE16QTBOVEV6TlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBmCjU4TnYyWW5hQ1RZbS8vczhhWSsyRmJyVDlFVkwvSWlpQTZZcmlMVDZXb2tDZlF2bGNmUmJsRmRPU1NQdERWbDIKdStMYVNNTzI3Undtd2FFT0ZFMUE5cHh0MmNVZ3JyRFNlbGtyQnJnSlZKTEhZVEFOVENHMXJDK0s3cVZncGdsaQpaK3lVZTc1b2lhaG9UMTlCV0lyeG9UeWd0NHdMYlljWHlOckI5Z3czZTluNVppVmVOdmdNNjh1V3JYRjVob2NWCnZrQ3FMK0NtMnJRN3VIa2Nqdy9mM2JkelNtWW4veFAyUFRyZWhEYWNRK2lSWWhoZ2lsRWpCbTZqdE5KY1o0bVkKK1R2c0RhRWFNWHRnczRJWGtjU295QklpY0IwVmFEcFMzMnNJSjhnZnhyTUJuNEJDRitnSnBaQ016WUQzaTFCbApMZ3d6V0tIS2phaW1ORGVqTUJNQ0F3RUFBYU1qTUNFd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFBUFhyaXYrWC9mT0lacEJBZy9OeGZxUUVMdDAKcGliaFozOW1wVnd1bWkzQUkySVg5dnd2V2dtZzdaL3lBK0pZVXhPak1FbFRaVDRobTRlUGUrM0xleStSb0NFaQpKdkVZMmxJUjNKOWE4VWZYcEZCYzFaVkQxSFY5TjNjTXFJWEc4empxRzhvT1lUbU5ZRTYvaUdETjZpS2pXcGpSCkhMeVU2Y2hHaGZmZXpTTG5rU1FieG1OckRFMXZmMjA1NEx0Z2JCQzN5alpyNCtWejlWaHFrQTBYL3dOU3RUUkcKbU85SzNoanlaMUN0b09wY2E0K2xJQXd0UTFYRWNwV2JVNk9rMEhjYnc2SXlzcFRsaitVQ1FuTlQwNVQySUtubQozbFlUajZlZU9DejB6NS92R1RkanRxcnowN1l1L1RsYXhvNjVnQ0NjWjVmdzdWbnpOUmwrQnpTUHhjZz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      server: https://E45ED498DF542AC7490FCAF978A5E005.sk1.us-west-2.eks.amazonaws.com
+    name: moleculer-goluq3
+contexts:
+  - context:
+      cluster: moleculer-goluq3
+      user: eks
+    name: moleculer-goluq3
+current-context: moleculer-goluq3
+kind: Config
+preferences: {}
+users:
+  - name: eks
+    user:
+      exec:
+        apiVersion: client.authentication.k8s.io/v1alpha1
+        args:
+          - token
+          - -i
+          - moleculer-goluq3
+        command: aws-iam-authenticator
