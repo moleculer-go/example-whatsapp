@@ -2,12 +2,50 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Rhymen/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
 	"github.com/moleculer-go/moleculer/payload"
 )
+
+func getRemoteJid(target string) string {
+	if strings.Index(target, "-") > 0 {
+		return target + "@g.us"
+	}
+	return target + "@s.whatsapp.net"
+}
+
+func removeAtSufix(in string) string {
+	return in[:strings.Index(in, "@")]
+}
+
+func sendToIndidualGroupMembers(ctx moleculer.Context, wac *whatsapp.Conn, message, target, contactId string) error {
+	var err error
+	contact := <-ctx.Call("contacts.get", contactId)
+	if contact.IsError() {
+		return contact.Error()
+	}
+	participants := contact.Get("group").Get("participants").Array()
+	for _, participant := range participants {
+		id := participant.Get("id").String()
+		remoteJid := getRemoteJid(removeAtSufix(id))
+		err = wac.Send(whatsapp.TextMessage{
+			Info: whatsapp.MessageInfo{
+				RemoteJid: remoteJid,
+			},
+			Text: message,
+		})
+		if err != nil {
+			break
+		}
+		fmt.Println("sent to remoteJid ", remoteJid)
+	}
+	fmt.Println("sent to participants ", participants)
+
+	return err
+}
 
 var Chat = moleculer.ServiceSchema{
 	Name: "chat",
@@ -23,13 +61,20 @@ var Chat = moleculer.ServiceSchema{
 				}
 				message := params.Get("message").String()
 				target := params.Get("target").String()
+				individual := params.Get("individual").Bool()
+				contactId := params.Get("contactId").String()
 
 				err = wac.Send(whatsapp.TextMessage{
 					Info: whatsapp.MessageInfo{
-						RemoteJid: target + "@s.whatsapp.net",
+						RemoteJid: getRemoteJid(target),
 					},
 					Text: message,
 				})
+
+				if err == nil && individual {
+					err = sendToIndidualGroupMembers(ctx, wac, message, target, contactId)
+				}
+
 				if err != nil {
 					ctx.Logger().Error("error sending message: ", err)
 					return payload.Error("Cannot send message! - error: ", err.Error())

@@ -2,6 +2,7 @@ package services
 
 import (
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Rhymen/go-whatsapp"
@@ -14,7 +15,11 @@ import (
 var Contacts = moleculer.ServiceSchema{
 	Name: "contacts",
 	Settings: map[string]interface{}{
-		"fields": []string{"id", "name", "mobile", "whatsAppId", "deviceToken"},
+		"fields": []string{
+			"id", "name", "mobile", "jid",
+			"deviceToken", "profilePicThumb", "status",
+			"type", "group",
+		},
 	},
 	Mixins: []moleculer.Mixin{db.Mixin(&db.MongoAdapter{
 		MongoURL:   MongoURL,
@@ -85,25 +90,38 @@ func parseParticipants(json string) []map[string]interface{} {
 	return r
 }
 
+func numberFromJid(jid string) string {
+	if jid == "" {
+		return ""
+	}
+	return jid[:strings.Index(jid, "@")]
+}
+
 func onContactAddedLoadContactInfo(ctx moleculer.Context, params moleculer.Payload) {
 	jid := params.Get("jid").String()
-	ctx.Logger().Debug("[contacts.service] onContactAdded() ", jid)
+	ctx.Logger().Debug("[contacts.service] onContactAddedLoadContactInfo() ", jid)
 	wac, _, err := validSession(ctx, params.Get("deviceToken").String())
 	if err != nil {
 		ctx.Logger().Error("Could not obtain a wap session! - error: ", err)
 		return
 	}
-	status := getStatus(ctx, wac, jid)
-	profilePicThumb := getProfilePicThumb(ctx, wac, jid)
-	groupInfo := getGroupInfo(ctx, wac, jid)
-	contactId := params.Get("contactId").String()
-	<-ctx.Call("contacts.update", map[string]interface{}{
-		"id":              contactId,
-		"status":          status,
+
+	update := map[string]interface{}{
+		"id":              params.Get("contactId").String(),
+		"mobile":          numberFromJid(jid),
+		"status":          getStatus(ctx, wac, jid),
 		"type":            contactType(jid),
-		"group":           groupInfo,
-		"profilePicThumb": profilePicThumb,
-	})
+		"group":           getGroupInfo(ctx, wac, jid),
+		"profilePicThumb": getProfilePicThumb(ctx, wac, jid),
+	}
+	ctx.Logger().Debug("contacts.update - update: ", update)
+
+	res := <-ctx.Call("contacts.update", update)
+	if res.IsError() {
+		ctx.Logger().Error("contacts.update - error: ", res.Error().Error())
+	} else {
+		ctx.Logger().Debug("contacts.update - Done! res: ", res)
+	}
 }
 
 func contactType(jid string) string {
@@ -135,7 +153,8 @@ func onRemoteJidReceived(ctx moleculer.Context, params moleculer.Payload) {
 		return
 	}
 	contact := <-ctx.Call("contacts.create", map[string]interface{}{
-		"jid": remoteJid,
+		"jid":         remoteJid,
+		"deviceToken": deviceToken,
 	})
 
 	ctx.Broadcast("contacts.jid.added", map[string]interface{}{

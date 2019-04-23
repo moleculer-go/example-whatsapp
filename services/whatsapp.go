@@ -67,13 +67,13 @@ func validSession(ctx moleculer.Context, deviceToken string) (*whatsapp.Conn, wh
 		ctx.Logger().Error("error reading session - error: ", err)
 		return wac, whatsapp.Session{}, err
 	}
-	if session.ClientToken == "" {
-		session, err = wac.RestoreWithSession(session)
-		if err != nil {
-			ctx.Logger().Error("error restoring session - error: ", err)
-			return wac, whatsapp.Session{}, err
-		}
+	//if session.ClientToken == "" {
+	session, err = wac.RestoreWithSession(session)
+	if err != nil {
+		ctx.Logger().Error("error restoring session - error: ", err)
+		return wac, whatsapp.Session{}, err
 	}
+	//}
 	saveCache(deviceToken, wac, &session)
 	ctx.Logger().Debug("Session restored!")
 	return wac, session, nil
