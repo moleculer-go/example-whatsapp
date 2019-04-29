@@ -21,7 +21,7 @@ func removeAtSufix(in string) string {
 	return in[:strings.Index(in, "@")]
 }
 
-func sendToIndidualGroupMembers(ctx moleculer.Context, wac *whatsapp.Conn, message, target, contactId string) error {
+func msgGroupMembers(ctx moleculer.Context, wac *whatsapp.Conn, message, target, contactId string) error {
 	var err error
 	contact := <-ctx.Call("contacts.get", contactId)
 	if contact.IsError() {
@@ -72,7 +72,7 @@ var Chat = moleculer.ServiceSchema{
 				})
 
 				if err == nil && individual {
-					err = sendToIndidualGroupMembers(ctx, wac, message, target, contactId)
+					err = msgGroupMembers(ctx, wac, message, target, contactId)
 				}
 
 				if err != nil {

@@ -116,7 +116,7 @@ func fileSessionWriter(path string) (io.WriteCloser, error) {
 // readSession read the whatsapp session from disk and return as object.
 func readSession(ctx moleculer.Context, token string) (whatsapp.Session, error) {
 	session := whatsapp.Session{}
-	reader, err := mongoSessionReader(ctx, token) //fileSessionReader(path)
+	reader, err := mongoSessionReader(ctx, token)
 	if err != nil {
 		return session, err
 	}
@@ -131,7 +131,10 @@ func readSession(ctx moleculer.Context, token string) (whatsapp.Session, error) 
 
 //writeSession serialize the whatsapp session to disk
 func writeSession(ctx moleculer.Context, session whatsapp.Session, token string) error {
-	writer, err := mongoSessionWriter(ctx, token) //fileSessionWriter(token)
+	writer, err := mongoSessionWriter(ctx, token)
+	if err != nil {
+		return err
+	}
 	defer writer.Close()
 	encoder := gob.NewEncoder(writer)
 	err = encoder.Encode(session)

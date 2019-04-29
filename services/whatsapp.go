@@ -16,7 +16,7 @@ var connections *cache.Cache
 
 func ensureCache() {
 	if connections == nil {
-		connections = cache.New(connectionDuration, time.Second*5)
+		connections = cache.New(connectionDuration, connectionDuration/4)
 		connections.OnEvicted(func(deviceToken string, value interface{}) {
 			connCache := value.(connSessionCache)
 			_, err := connCache.conn.Disconnect()
@@ -36,7 +36,16 @@ type connSessionCache struct {
 
 func saveCache(deviceToken string, wac *whatsapp.Conn, session *whatsapp.Session) {
 	ensureCache()
-	connections.Set(deviceToken, connSessionCache{wac, session}, 0)
+	connections.Set(deviceToken, connSessionCache{wac, session}, connectionDuration)
+}
+
+func renewCache(deviceToken string) error {
+	wac, session, err := fromCache(deviceToken)
+	if err != nil {
+		return err
+	}
+	saveCache(deviceToken, wac, session)
+	return nil
 }
 
 func fromCache(deviceToken string) (*whatsapp.Conn, *whatsapp.Session, error) {
