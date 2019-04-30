@@ -9,7 +9,7 @@ import (
 
 	"github.com/moleculer-go/moleculer/payload"
 
-	"github.com/Rhymen/go-whatsapp"
+	"github.com/moleculer-go/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
 )
 

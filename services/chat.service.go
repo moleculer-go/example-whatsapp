@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rhymen/go-whatsapp"
+	"github.com/moleculer-go/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
 	"github.com/moleculer-go/moleculer/payload"
 )
@@ -87,12 +87,12 @@ var Chat = moleculer.ServiceSchema{
 	},
 
 	Events: []moleculer.Event{
+		// {
+		// 	Name:    "login.success",
+		// 	Handler: onLoginSuccess,
+		// },
 		{
-			Name:    "login.success",
-			Handler: onLoginSuccess,
-		},
-		{
-			Name:    "contacts.jid.added",
+			Name:    "contacts.added",
 			Handler: onContactAddedLoadMessages,
 		},
 	},
@@ -118,15 +118,16 @@ type waHandler struct {
 //HandleError needs to be implemented to be a valid WhatsApp handler
 func (h *waHandler) HandleError(err error) {
 	if e, ok := err.(*whatsapp.ErrConnectionFailed); ok {
-		fmt.Printf("Connection failed, underlying error: %v", e.Err)
-		fmt.Println("Waiting 30sec...")
+		h.context.Logger().Error("Connection failed, will try to reconnect -> underlying error: ", e)
+		h.context.Logger().Debug("Waiting 30sec...")
 		<-time.After(30 * time.Second)
-		fmt.Println("Reconnecting...")
+		h.context.Logger().Debug("Reconnecting...")
 		err = h.c.Restore()
 	}
 	if err == nil {
 		return
 	}
+	h.context.Logger().Error("WhatsApp error: ", err)
 	h.context.Emit("chat.error", payload.New(err))
 }
 

@@ -6,7 +6,7 @@ function Panel() {
     <div>
       You Need to Login first !
       <br />
-      <Link href="/generateCode">
+      <Link href="/login">
         <MDBBtn>Login</MDBBtn>
       </Link>
     </div>

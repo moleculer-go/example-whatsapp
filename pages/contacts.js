@@ -48,7 +48,8 @@ class Contacts extends React.Component {
   }
 
   async componentDidMount() {
-    this.setState({ messages: new Array() });
+    const { contacts } = this.props;
+    this.setState({ messages: new Array(), contacts });
     const subscribe = subscriber("deviceToken", this.props.deviceToken);
     await subscribe("chat.message.received", msg => {
       console.log("chat.message.received event msg: ", msg);
@@ -56,6 +57,13 @@ class Contacts extends React.Component {
       messages.push(msg);
       this.setState({ ...this.state, messages });
       this.storeMessages();
+    });
+
+    await subscribe("contacts.added", contact => {
+      console.log("contacts.added event msg: ", contact);
+      const contacts = this.state.contacts || [];
+      contacts.push(contact);
+      this.setState({ ...this.state, contacts });
     });
   }
 
@@ -97,13 +105,15 @@ class Contacts extends React.Component {
   renderPersonDetails(item) {
     return (
       <div>
-        <div className="d-flex w-100 justify-content-between">
+        <h4 className="mb-1">{item.name}</h4>
+
+        {/* <div className="d-flex w-100 justify-content-between">
           <h6 className="mb-1">Number:</h6>
           {item.mobile}
-        </div>
-        <div className="d-flex w-100 justify-content-between">
-          <h6 className="mb-1">Status:</h6>
-          {item.status}
+        </div> */}
+        <div className="d-flex">
+          <b>Status:</b>
+          <div className="ml-2">{item.status}</div>
         </div>
       </div>
     );
@@ -354,7 +364,7 @@ class Contacts extends React.Component {
     return (
       <MDBContainer className="mb-3 pr-5">
         <MDBRow end>
-          <MDBCol size="2" style={{ "text-align": "right" }}>
+          <MDBCol size="2" style={{ textAlign: "right" }}>
             Select All
           </MDBCol>
           <MDBCol size="1">

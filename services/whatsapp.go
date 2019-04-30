@@ -3,9 +3,10 @@ package services
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/Rhymen/go-whatsapp"
+	"github.com/moleculer-go/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
 	"github.com/patrickmn/go-cache"
 )
@@ -48,6 +49,8 @@ func renewCache(deviceToken string) error {
 	return nil
 }
 
+var sessionMutex = &sync.Mutex{}
+
 func fromCache(deviceToken string) (*whatsapp.Conn, *whatsapp.Session, error) {
 	ensureCache()
 	v, found := connections.Get(deviceToken)
@@ -63,6 +66,8 @@ func fromCache(deviceToken string) (*whatsapp.Conn, *whatsapp.Session, error) {
 
 // validSession return a valid whatsapp connection
 func validSession(ctx moleculer.Context, deviceToken string) (*whatsapp.Conn, whatsapp.Session, error) {
+	sessionMutex.Lock()
+	defer sessionMutex.Unlock()
 	wac, sessionP, err := fromCache(deviceToken)
 	if err == nil {
 		return wac, *sessionP, nil

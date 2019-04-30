@@ -4,6 +4,7 @@ import "mdbreact/dist/css/mdb.css";
 import "isomorphic-unfetch";
 import React from "react";
 import Link from "next/link";
+import Router from "next/router";
 import {
   MDBCard,
   MDBContainer,
@@ -31,7 +32,7 @@ class GenerateCode extends React.Component {
     const subscribe = subscriber("deviceToken", this.props.deviceToken);
     await subscribe("login.success", params => {
       console.log("login.success event params: ", params);
-      this.setState({ ...this.state, loginState: "success" });
+      Router.push("/contacts");
     });
 
     await subscribe("login.fail", params => {
@@ -42,16 +43,7 @@ class GenerateCode extends React.Component {
 
   renderCode() {
     this.state = this.state || {};
-    if (this.state.loginState === "success") {
-      return (
-        <MDBContainer>
-          Scan succesfull !!
-          <Link href="/contacts">
-            <MDBBtn>Contacts</MDBBtn>
-          </Link>
-        </MDBContainer>
-      );
-    } else if (this.state.loginState === "fail") {
+    if (this.state.loginState === "fail") {
       return (
         <MDBContainer>
           Login falied. :(
@@ -62,24 +54,14 @@ class GenerateCode extends React.Component {
           </a>
         </MDBContainer>
       );
-    } else if (this.props.code) {
-      return (
-        <div>
-          <QRCode size={450} level="M" value={this.props.code} />
-          <hr />
-          <MDBCardTitle className="center">Scan on your Phone</MDBCardTitle>
-        </div>
-      );
-    } else {
-      return (
-        <MDBContainer>
-          Already Logged In ..
-          <Link href="/contacts">
-            <MDBBtn>Move on...</MDBBtn>
-          </Link>
-        </MDBContainer>
-      );
     }
+    return (
+      <div>
+        <QRCode size={450} level="M" value={this.props.code} />
+        <hr />
+        <MDBCardTitle className="center">Scan on your Phone</MDBCardTitle>
+      </div>
+    );
   }
 
   render() {
