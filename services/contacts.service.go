@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -103,6 +104,14 @@ func fetchContact(ctx moleculer.Context, deviceToken string, contact whatsapp.Co
 	cType := contactType(jid)
 	ctx.Logger().Debug("[contacts.service]  fetchContact() cType ", cType)
 
+	status := getStatus(ctx, wac, jid)
+
+	ctx.Logger().Debug("[contacts.service]  fetchContact() status ", status)
+
+	pic := getProfilePicThumb(ctx, wac, jid)
+
+	ctx.Logger().Debug("[contacts.service]  fetchContact() pic ", pic)
+
 	info := map[string]interface{}{
 		"jid":             jid,
 		"name":            contact.Name,
@@ -110,15 +119,17 @@ func fetchContact(ctx moleculer.Context, deviceToken string, contact whatsapp.Co
 		"notify":          contact.Notify,
 		"deviceToken":     deviceToken,
 		"mobile":          numberFromJid(jid),
-		"status":          getStatus(ctx, wac, jid),
+		"status":          status,
 		"type":            cType,
-		"profilePicThumb": getProfilePicThumb(ctx, wac, jid),
+		"profilePicThumb": pic,
 	}
 	ctx.Logger().Debug("[contacts.service]  fetchContact() info ", info)
 
 	if cType == "group" {
 		info["group"] = getGroupInfo(ctx, wac, jid)
+		ctx.Logger().Debug("[contacts.service]  fetchContact() info['group'] ", info["group"])
 	}
+
 	return info, nil
 }
 
@@ -201,9 +212,12 @@ func loadContacts(context moleculer.Context, params moleculer.Payload) {
 	}
 	context.Logger().Debug("[contacts.service] Before wac.Contacts() ")
 
+	fmt.Printf("[contacts.service] wac.Store memory # %p ", wac.Store)
+	wac.Store.OnUpdateContacts(func(contacts map[string]whatsapp.Contact) {
+		context.Logger().Debug("[contacts.service] OnUpdateContacts handler called - # contacts: ", len(contacts))
+		for _, contact := range wac.Store.Contacts {
+			createContact(context, deviceToken, contact)
+		}
+	})
 	_, err = wac.Contacts()
-	context.Logger().Debug("[contacts.service] wac.Store.Contacts ", wac.Store.Contacts)
-	for _, contact := range wac.Store.Contacts {
-		go createContact(context, deviceToken, contact)
-	}
 }
