@@ -2,12 +2,50 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/Rhymen/go-whatsapp"
+	"github.com/moleculer-go/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
 	"github.com/moleculer-go/moleculer/payload"
 )
+
+func getRemoteJid(target string) string {
+	if strings.Index(target, "-") > 0 {
+		return target + "@g.us"
+	}
+	return target + "@s.whatsapp.net"
+}
+
+func removeAtSufix(in string) string {
+	return in[:strings.Index(in, "@")]
+}
+
+func msgGroupMembers(ctx moleculer.Context, wac *whatsapp.Conn, message, target, contactId string) error {
+	var err error
+	contact := <-ctx.Call("contacts.get", contactId)
+	if contact.IsError() {
+		return contact.Error()
+	}
+	participants := contact.Get("group").Get("participants").Array()
+	for _, participant := range participants {
+		id := participant.Get("id").String()
+		remoteJid := getRemoteJid(removeAtSufix(id))
+		err = wac.Send(whatsapp.TextMessage{
+			Info: whatsapp.MessageInfo{
+				RemoteJid: remoteJid,
+			},
+			Text: message,
+		})
+		if err != nil {
+			break
+		}
+		fmt.Println("sent to remoteJid ", remoteJid)
+	}
+	fmt.Println("sent to participants ", participants)
+
+	return err
+}
 
 var Chat = moleculer.ServiceSchema{
 	Name: "chat",
@@ -23,13 +61,20 @@ var Chat = moleculer.ServiceSchema{
 				}
 				message := params.Get("message").String()
 				target := params.Get("target").String()
+				individual := params.Get("individual").Bool()
+				contactId := params.Get("contactId").String()
 
 				err = wac.Send(whatsapp.TextMessage{
 					Info: whatsapp.MessageInfo{
-						RemoteJid: target + "@s.whatsapp.net",
+						RemoteJid: getRemoteJid(target),
 					},
 					Text: message,
 				})
+
+				if err == nil && individual {
+					err = msgGroupMembers(ctx, wac, message, target, contactId)
+				}
+
 				if err != nil {
 					ctx.Logger().Error("error sending message: ", err)
 					return payload.Error("Cannot send message! - error: ", err.Error())
@@ -42,12 +87,12 @@ var Chat = moleculer.ServiceSchema{
 	},
 
 	Events: []moleculer.Event{
+		// {
+		// 	Name:    "login.success",
+		// 	Handler: onLoginSuccess,
+		// },
 		{
-			Name:    "login.success",
-			Handler: onLoginSuccess,
-		},
-		{
-			Name:    "contacts.jid.added",
+			Name:    "contacts.added",
 			Handler: onContactAddedLoadMessages,
 		},
 	},
@@ -73,15 +118,16 @@ type waHandler struct {
 //HandleError needs to be implemented to be a valid WhatsApp handler
 func (h *waHandler) HandleError(err error) {
 	if e, ok := err.(*whatsapp.ErrConnectionFailed); ok {
-		fmt.Printf("Connection failed, underlying error: %v", e.Err)
-		fmt.Println("Waiting 30sec...")
+		h.context.Logger().Error("Connection failed, will try to reconnect -> underlying error: ", e)
+		h.context.Logger().Debug("Waiting 30sec...")
 		<-time.After(30 * time.Second)
-		fmt.Println("Reconnecting...")
+		h.context.Logger().Debug("Reconnecting...")
 		err = h.c.Restore()
 	}
 	if err == nil {
 		return
 	}
+	h.context.Logger().Error("WhatsApp error: ", err)
 	h.context.Emit("chat.error", payload.New(err))
 }
 

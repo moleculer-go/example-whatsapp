@@ -30,7 +30,7 @@ func main() {
 	}
 
 	cli.Start(
-		&moleculer.Config{LogLevel: "inf"},
+		&moleculer.Config{LogLevel: "debug"},
 		func(broker *broker.ServiceBroker, cmd *cobra.Command) {
 			gatewaySvc := &gateway.HttpService{
 				Settings: getGatewayConfig(cmd),

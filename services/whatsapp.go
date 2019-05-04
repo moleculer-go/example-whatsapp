@@ -3,9 +3,10 @@ package services
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/Rhymen/go-whatsapp"
+	"github.com/moleculer-go/go-whatsapp"
 	"github.com/moleculer-go/moleculer"
 	"github.com/patrickmn/go-cache"
 )
@@ -16,7 +17,7 @@ var connections *cache.Cache
 
 func ensureCache() {
 	if connections == nil {
-		connections = cache.New(connectionDuration, time.Second*5)
+		connections = cache.New(connectionDuration, connectionDuration/4)
 		connections.OnEvicted(func(deviceToken string, value interface{}) {
 			connCache := value.(connSessionCache)
 			_, err := connCache.conn.Disconnect()
@@ -36,8 +37,19 @@ type connSessionCache struct {
 
 func saveCache(deviceToken string, wac *whatsapp.Conn, session *whatsapp.Session) {
 	ensureCache()
-	connections.Set(deviceToken, connSessionCache{wac, session}, 0)
+	connections.Set(deviceToken, connSessionCache{wac, session}, connectionDuration)
 }
+
+func renewCache(deviceToken string) error {
+	wac, session, err := fromCache(deviceToken)
+	if err != nil {
+		return err
+	}
+	saveCache(deviceToken, wac, session)
+	return nil
+}
+
+var sessionMutex = &sync.Mutex{}
 
 func fromCache(deviceToken string) (*whatsapp.Conn, *whatsapp.Session, error) {
 	ensureCache()
@@ -54,6 +66,8 @@ func fromCache(deviceToken string) (*whatsapp.Conn, *whatsapp.Session, error) {
 
 // validSession return a valid whatsapp connection
 func validSession(ctx moleculer.Context, deviceToken string) (*whatsapp.Conn, whatsapp.Session, error) {
+	sessionMutex.Lock()
+	defer sessionMutex.Unlock()
 	wac, sessionP, err := fromCache(deviceToken)
 	if err == nil {
 		return wac, *sessionP, nil
@@ -67,13 +81,13 @@ func validSession(ctx moleculer.Context, deviceToken string) (*whatsapp.Conn, wh
 		ctx.Logger().Error("error reading session - error: ", err)
 		return wac, whatsapp.Session{}, err
 	}
-	if session.ClientToken == "" {
-		session, err = wac.RestoreWithSession(session)
-		if err != nil {
-			ctx.Logger().Error("error restoring session - error: ", err)
-			return wac, whatsapp.Session{}, err
-		}
+	//if session.ClientToken == "" {
+	session, err = wac.RestoreWithSession(session)
+	if err != nil {
+		ctx.Logger().Error("error restoring session - error: ", err)
+		return wac, whatsapp.Session{}, err
 	}
+	//}
 	saveCache(deviceToken, wac, &session)
 	ctx.Logger().Debug("Session restored!")
 	return wac, session, nil

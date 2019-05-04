@@ -2,9 +2,10 @@ package services
 
 import (
 	"regexp"
+	"strings"
 	"time"
 
-	"github.com/Rhymen/go-whatsapp"
+	"github.com/moleculer-go/go-whatsapp"
 
 	"github.com/moleculer-go/moleculer"
 	db "github.com/moleculer-go/moleculer-db"
@@ -14,7 +15,11 @@ import (
 var Contacts = moleculer.ServiceSchema{
 	Name: "contacts",
 	Settings: map[string]interface{}{
-		"fields": []string{"id", "name", "mobile", "whatsAppId", "deviceToken"},
+		"fields": []string{
+			"id", "name", "mobile", "jid",
+			"deviceToken", "profilePicThumb", "status",
+			"type", "group",
+		},
 	},
 	Mixins: []moleculer.Mixin{db.Mixin(&db.MongoAdapter{
 		MongoURL:   MongoURL,
@@ -25,12 +30,8 @@ var Contacts = moleculer.ServiceSchema{
 
 	Events: []moleculer.Event{
 		{
-			Name:    "chat.remoteJid.received",
-			Handler: onRemoteJidReceived,
-		},
-		{
-			Name:    "contacts.jid.added",
-			Handler: onContactAddedLoadContactInfo,
+			Name:    "login.success",
+			Handler: loadContacts,
 		},
 	},
 }
@@ -85,26 +86,64 @@ func parseParticipants(json string) []map[string]interface{} {
 	return r
 }
 
-func onContactAddedLoadContactInfo(ctx moleculer.Context, params moleculer.Payload) {
-	jid := params.Get("jid").String()
-	ctx.Logger().Debug("[contacts.service] onContactAdded() ", jid)
-	wac, _, err := validSession(ctx, params.Get("deviceToken").String())
+func numberFromJid(jid string) string {
+	if jid == "" {
+		return ""
+	}
+	return jid[:strings.Index(jid, "@")]
+}
+
+func fetchContact(ctx moleculer.Context, deviceToken string, contact whatsapp.Contact) (map[string]interface{}, error) {
+	wac, _, err := validSession(ctx, deviceToken)
 	if err != nil {
 		ctx.Logger().Error("Could not obtain a wap session! - error: ", err)
-		return
+		return map[string]interface{}{}, err
 	}
-	status := getStatus(ctx, wac, jid)
-	profilePicThumb := getProfilePicThumb(ctx, wac, jid)
-	groupInfo := getGroupInfo(ctx, wac, jid)
-	contactId := params.Get("contactId").String()
-	<-ctx.Call("contacts.update", map[string]interface{}{
-		"id":              contactId,
-		"status":          status,
-		"type":            contactType(jid),
-		"group":           groupInfo,
-		"profilePicThumb": profilePicThumb,
-	})
+	jid := contact.Jid
+	cType := contactType(jid)
+	ctx.Logger().Debug("[contacts.service]  fetchContact() cType ", cType)
+
+	info := map[string]interface{}{
+		"jid":             jid,
+		"name":            contact.Name,
+		"short":           contact.Short,
+		"notify":          contact.Notify,
+		"deviceToken":     deviceToken,
+		"mobile":          numberFromJid(jid),
+		"status":          getStatus(ctx, wac, jid),
+		"type":            cType,
+		"profilePicThumb": getProfilePicThumb(ctx, wac, jid),
+	}
+	ctx.Logger().Debug("[contacts.service]  fetchContact() info ", info)
+
+	if cType == "group" {
+		info["group"] = getGroupInfo(ctx, wac, jid)
+	}
+	return info, nil
 }
+
+// func onContactAddedLoadContactInfo(ctx moleculer.Context, params moleculer.Payload) {
+// 	jid := params.Get("jid").String()
+// 	deviceToken := params.Get("deviceToken").String()
+// 	contactId := params.Get("contactId").String()
+// 	ctx.Logger().Debug("[contacts.service] onContactAddedLoadContactInfo() jid: ", jid, " contactId: ", contactId)
+
+// 	update, err := fetchContact(ctx, deviceToken, jid)
+// 	if err != nil {
+// 		ctx.Logger().Error("Could not fetch contact details - error: ", err)
+// 		return
+// 	}
+
+// 	update["id"] = contactId
+// 	ctx.Logger().Debug("contacts.update - jid: ", jid, " update: ", update)
+
+// 	res := <-ctx.Call("contacts.update", update)
+// 	if res.IsError() {
+// 		ctx.Logger().Error("contacts.update - error: ", res.Error().Error())
+// 	} else {
+// 		ctx.Logger().Debug("contacts.update - Done! res: ", res)
+// 	}
+// }
 
 func contactType(jid string) string {
 	matched, _ := regexp.MatchString(`\@g\.us`, jid)
@@ -118,29 +157,53 @@ func contactType(jid string) string {
 	return "unknown"
 }
 
-func onRemoteJidReceived(ctx moleculer.Context, params moleculer.Payload) {
-	remoteJid := params.Get("remoteJid").String()
-	if remoteJid == "" {
-		return
-	}
-	deviceToken := params.Get("deviceToken").String()
-	ctx.Logger().Debug("[contacts.service] onRemoteJidReceived() remoteJid: ", remoteJid)
+func contactExists(ctx moleculer.Context, jid string) bool {
 	r := <-ctx.Call("contacts.find", map[string]interface{}{
-		"query": map[string]interface{}{
-			"jid": remoteJid,
-		},
+		"query": map[string]interface{}{"jid": jid},
 	})
-	if r.IsError() || r.Len() > 0 {
-		//jid ja existe
+	ctx.Logger().Debug("contactExists() r: ", r)
+	return !r.IsError() && r.Len() > 0
+}
+
+func createContact(ctx moleculer.Context, deviceToken string, contact whatsapp.Contact) {
+	ctx.Logger().Debug("[contacts.service] createContact() jid: ", contact.Jid)
+	exists := contactExists(ctx, contact.Jid)
+	ctx.Logger().Debug("[contacts.service] exists: ", exists)
+	if exists {
+		ctx.Logger().Debug("[contacts.service] createContact() SKIPING contact already exists!  jid: ", contact.Jid)
 		return
 	}
-	contact := <-ctx.Call("contacts.create", map[string]interface{}{
-		"jid": remoteJid,
-	})
+	ctx.Logger().Debug("[contacts.service] before fetchContact() ")
 
-	ctx.Broadcast("contacts.jid.added", map[string]interface{}{
-		"jid":         remoteJid,
-		"deviceToken": deviceToken,
-		"contactId":   contact.Get("id").String(),
-	})
+	data, err := fetchContact(ctx, deviceToken, contact)
+	ctx.Logger().Debug("[contacts.service] fetchContact() data: ", data, " err: ", err)
+
+	if err != nil {
+		ctx.Logger().Error("Could not fetch contact details - error: ", err)
+		return
+	}
+	ctx.Logger().Debug("[contacts.service] before  contacts.create ")
+
+	res := <-ctx.Call("contacts.create", data)
+	ctx.Logger().Debug("[contacts.service] contacts.create res: ", res)
+
+	data["id"] = res.Get("id").String()
+	ctx.Broadcast("contacts.added", data)
+}
+
+func loadContacts(context moleculer.Context, params moleculer.Payload) {
+	context.Logger().Debug("[contacts.service] loadContacts() !")
+	deviceToken := params.Get("deviceToken").String()
+	wac, _, err := validSession(context, deviceToken)
+	if err != nil {
+		context.Logger().Error("Could not obtain a wap session! - error: ", err)
+		return
+	}
+	context.Logger().Debug("[contacts.service] Before wac.Contacts() ")
+
+	_, err = wac.Contacts()
+	context.Logger().Debug("[contacts.service] wac.Store.Contacts ", wac.Store.Contacts)
+	for _, contact := range wac.Store.Contacts {
+		go createContact(context, deviceToken, contact)
+	}
 }

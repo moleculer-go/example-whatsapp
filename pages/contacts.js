@@ -5,16 +5,22 @@ import "isomorphic-unfetch";
 import React from "react";
 import Link from "next/link";
 import {
+  MDBCollapse,
+  MDBRow,
+  MDBCol,
   MDBCard,
+  MDBInput,
   MDBContainer,
   MDBCardBody,
   MDBCardTitle,
   MDBListGroup,
   MDBListGroupItem,
-  MDBBtn
+  MDBBtn,
+  Alert
 } from "mdbreact";
 import withAuth from "../lib/withAuth";
 import { postRequest, subscriber } from "../lib/request";
+
 class Contacts extends React.Component {
   static async getInitialProps(ctx) {
     let contacts = [];
@@ -42,25 +48,120 @@ class Contacts extends React.Component {
   }
 
   async componentDidMount() {
-    this.setState({ messages: new Array() });
+    const { contacts } = this.props;
+    this.setState({ messages: new Array(), contacts });
     const subscribe = subscriber("deviceToken", this.props.deviceToken);
-    await subscribe("chat.message", msg => {
-      console.log("chat.message event msg: ", msg);
+    await subscribe("chat.message.received", msg => {
+      console.log("chat.message.received event msg: ", msg);
       const messages = this.state.messages || new Array();
       messages.push(msg);
       this.setState({ ...this.state, messages });
       this.storeMessages();
     });
+
+    await subscribe("contacts.added", contact => {
+      console.log("contacts.added event msg: ", contact);
+      const contacts = this.state.contacts || [];
+      contacts.push(contact);
+      this.setState({ ...this.state, contacts });
+    });
   }
 
   countMessagesByContact(contactId) {
-    const count = 0;
+    let count = 0;
     if (this.state && this.state.messages) {
-      count = this.state.messages
-        .filter(m => m.contactId === contactId)
-        .length();
+      count = this.state.messages.filter(m => m.id === contactId).length;
     }
-    return <div>{count}</div>;
+    return count;
+  }
+
+  userFilter() {
+    const self = this;
+    return item => {
+      self.state = self.state || {};
+      if (self.state.filter === "all" || !self.state.filter) {
+        return true;
+      }
+      return item.type === self.state.filter;
+    };
+  }
+
+  getName(item) {
+    if (item.type === "group") {
+      return item.group.subject;
+    }
+    return item.name;
+  }
+
+  renderGroupDetails(item) {
+    return (
+      <div className="ml-2">
+        <h5>{this.getName(item)}</h5>
+        {this.renderGroupMsgBtn(item)}
+      </div>
+    );
+  }
+
+  renderPersonDetails(item) {
+    return (
+      <div>
+        <h4 className="mb-1">{item.name}</h4>
+
+        {/* <div className="d-flex w-100 justify-content-between">
+          <h6 className="mb-1">Number:</h6>
+          {item.mobile}
+        </div> */}
+        <div className="d-flex">
+          <b>Status:</b>
+          <div className="ml-2">{item.status}</div>
+        </div>
+      </div>
+    );
+  }
+
+  renderGroupMsgBtn(item) {
+    const isOpen = this.state.msgPanelOpen[item.id];
+    if (!isOpen) {
+      return (
+        <MDBBtn
+          size="sm"
+          onClick={e => {
+            const { msgPanelOpen } = this.state;
+            msgPanelOpen[item.id] = true;
+            this.setState({ ...this.state, msgPanelOpen });
+          }}
+        >
+          Message
+        </MDBBtn>
+      );
+    }
+  }
+
+  renderGroupMsg(item) {
+    const isOpen = this.state.msgPanelOpen[item.id];
+    return (
+      <div>
+        <MDBCollapse id={`collapseItemMsg_${item.id}`} isOpen={isOpen}>
+          <MDBInput
+            type="textarea"
+            label="Broadcast to all group users"
+            rows="5"
+            onChange={e => this.updateMsg(item.id, e.target.value)}
+            value={this.state[`message_${item.id}`]}
+          />
+          {this.renderSendBtn(item)}
+          <hr />
+        </MDBCollapse>
+      </div>
+    );
+  }
+
+  renderPersonMsg(item) {
+    return (
+      <Link href={`/messages?target=${item.mobile}`}>
+        <MDBBtn>Messages [{this.countMessagesByContact(item.id)}]</MDBBtn>
+      </Link>
+    );
   }
 
   renderContacts() {
@@ -68,43 +169,237 @@ class Contacts extends React.Component {
     if (!contacts || !contacts.map) {
       return <div>No contacts found :( </div>;
     }
-    return contacts.map(item => {
+    return contacts.filter(this.userFilter()).map(item => {
+      const contacDetails =
+        item.type === "group"
+          ? this.renderGroupDetails(item)
+          : this.renderPersonDetails(item);
+      const msgPanel =
+        item.type === "group"
+          ? this.renderGroupMsg(item)
+          : this.renderPersonMsg(item);
+
+      const imgSrc = !!item.profilePicThumb
+        ? item.profilePicThumb
+        : `/static/imgs/nopic_${item.type}.png`;
+
       return (
         <MDBListGroupItem key={item.id}>
-          <div className="d-flex w-100 justify-content-between">
-            <h6 className="mb-1">Name:</h6>
-            {item.name}
-          </div>
-          <div className="d-flex w-100 justify-content-between">
-            <h6 className="mb-1">Number:</h6>
-            {item.mobile}
-          </div>
-          <Link href={`/messages?target=${item.mobile}`}>
-            <MDBBtn>Messages [{this.countMessagesByContact(item.id)}]</MDBBtn>
-          </Link>
-          <hr />
+          <MDBContainer>
+            <MDBRow>
+              <MDBCol size="2">
+                <img width="100" height="100" src={imgSrc} />
+              </MDBCol>
+              <MDBCol size="9">{contacDetails}</MDBCol>
+              <MDBCol size="1">
+                <MDBInput
+                  className="mt-n3"
+                  type="checkbox"
+                  id={`bulk_${item.id}`}
+                  checked={
+                    this.state.selectAll === true ||
+                    this.state.selected[item.id]
+                  }
+                  onClick={e => {
+                    const { selected } = this.state;
+                    selected[item.id] = e.target.checked;
+                    this.setState({ ...this.state, selected });
+                  }}
+                />
+              </MDBCol>
+            </MDBRow>
+            <MDBRow>
+              <MDBCol>{msgPanel}</MDBCol>
+            </MDBRow>
+          </MDBContainer>
         </MDBListGroupItem>
       );
     });
   }
 
+  updateMsg(id, msg) {
+    const state = this.state || {};
+    state[`message_${id}`] = msg;
+    this.setState(state);
+  }
+
+  // async sendGroupParticipantsMsg(contact) {
+  //   const message = this.state[`message_${contact.id}`];
+  //   this.setState({ ...this.state, loading: true });
+  //   const { deviceToken } = this.props;
+  //   const {group: {participants}} = contact;
+  //   const msgs = await Promise.All(participants.map(async ({id}) => {
+  //     const target = id.replace("@c.us", "@");
+  //     const result = await postRequest("/api/chat/sendMessage", {
+  //       deviceToken,
+  //       message,
+  //       target
+  //     });
+
+  //   }));
+
+  //   const {state} = this;
+  //   state[`message_${contact.id}`] = "";
+  //   this.setState({ ...state, loading: false });
+  //   console.log("sendMessage() result: ", result);
+  // }
+
+  async sendGroupMsg(contact, individual) {
+    const message = this.state[`message_${contact.id}`];
+    this.setState({ ...this.state, loading: true });
+    const { deviceToken } = this.props;
+    const target = contact.mobile;
+    const result = await postRequest("/api/chat/sendMessage", {
+      contactId: contact.id,
+      deviceToken,
+      message,
+      target,
+      individual
+    });
+    const { state } = this;
+    state[`message_${contact.id}`] = "";
+    this.setState({ ...state, loading: false });
+    console.log("sendMessage() result: ", result);
+  }
+
+  renderSendBtn(item) {
+    if (this.state.loading) {
+      return <div>Sending... </div>;
+    }
+    return (
+      <div>
+        <MDBBtn onClick={_ => this.sendGroupMsg(item)}>Send to Group</MDBBtn>
+        <MDBBtn color="primary" onClick={_ => this.sendGroupMsg(item, true)}>
+          Send to each Person
+        </MDBBtn>
+        <MDBBtn
+          color="warning"
+          className="ml-5"
+          onClick={e => {
+            const { msgPanelOpen } = this.state;
+            msgPanelOpen[item.id] = false;
+            this.setState({ ...this.state, msgPanelOpen });
+          }}
+        >
+          Cancel
+        </MDBBtn>
+      </div>
+    );
+  }
+
+  filter(type) {
+    this.setState({ ...this.state, filter: type, selectAll: false });
+  }
+
+  renderFilterTitle() {
+    if (this.state.filter === "person") {
+      return "People";
+    }
+    return "Groups";
+  }
+
+  renderBulkMsg() {
+    const closed = this.state.filter !== "group" || !this.state.selectAll;
+    return (
+      <MDBCollapse id="collapseBulkMsg" isOpen={!closed}>
+        <MDBInput
+          type="textarea"
+          label="Broadcast messages to all selected group:"
+          rows="5"
+          onChange={e =>
+            this.setState({ ...this.state, bulkMessage: e.target.value })
+          }
+          value={this.state.bulkMessage}
+        />
+        <MDBBtn onClick={_ => this.sendGroupMsg(item)}>
+          Send to all selected groups
+        </MDBBtn>
+        <hr />
+      </MDBCollapse>
+    );
+  }
+
+  initialState() {
+    return {
+      filter: "group",
+      selected: {},
+      msgPanelOpen: {}
+    };
+  }
+
+  renderFilters() {
+    return (
+      <MDBContainer>
+        <MDBBtn
+          size="sm"
+          onClick={() => this.filter("all")}
+          color={this.state.filter === "all" ? "primary" : "info"}
+        >
+          All
+        </MDBBtn>
+        <MDBBtn
+          size="sm"
+          onClick={() => this.filter("person")}
+          color={this.state.filter === "person" ? "primary" : "info"}
+        >
+          People
+        </MDBBtn>
+        <MDBBtn
+          size="sm"
+          onClick={() => this.filter("group")}
+          color={this.state.filter === "group" ? "primary" : "info"}
+        >
+          Groups
+        </MDBBtn>
+        <Link href="/newContact">
+          <MDBBtn size="sm" className="ml-5">
+            New Contact
+          </MDBBtn>
+        </Link>
+      </MDBContainer>
+    );
+  }
+
+  renderSelectAll() {
+    return (
+      <MDBContainer className="mb-3 pr-5">
+        <MDBRow end>
+          <MDBCol size="2" style={{ textAlign: "right" }}>
+            Select All
+          </MDBCol>
+          <MDBCol size="1">
+            <MDBInput
+              type="checkbox"
+              id="selectAll"
+              className="mt-n4"
+              onClick={e =>
+                this.setState({ ...this.state, selectAll: e.target.checked })
+              }
+              checked={this.state.selectAll}
+            />
+          </MDBCol>
+        </MDBRow>
+      </MDBContainer>
+    );
+  }
+
   render() {
+    this.state = this.state || this.initialState();
     return (
       <MDBContainer>
         <MDBCard
           className="card-body"
-          style={{ width: "33rem", marginTop: "1rem" }}
+          style={{ width: "100%", marginTop: "1rem" }}
         >
           <MDBCardBody>
-            <MDBCardTitle>Contacts</MDBCardTitle>
+            <MDBCardTitle>{this.renderFilterTitle()}</MDBCardTitle>
+            {this.renderFilters()}
+            <hr />
+            {this.renderBulkMsg()}
+            {this.renderSelectAll()}
             <MDBContainer>
-              <MDBListGroup style={{ width: "22rem" }}>
-                {this.renderContacts()}
-              </MDBListGroup>
+              <MDBListGroup>{this.renderContacts()}</MDBListGroup>
             </MDBContainer>
-            <Link href="/newContact">
-              <MDBBtn>New Contact</MDBBtn>
-            </Link>
           </MDBCardBody>
         </MDBCard>
       </MDBContainer>
