@@ -8,7 +8,8 @@ import (
 	"github.com/moleculer-go/go-whatsapp"
 
 	"github.com/moleculer-go/moleculer"
-	db "github.com/moleculer-go/moleculer-db"
+	"github.com/moleculer-go/store"
+	"github.com/moleculer-go/store/mongo"
 	"github.com/tidwall/gjson"
 )
 
@@ -21,7 +22,7 @@ var Contacts = moleculer.ServiceSchema{
 			"type", "group",
 		},
 	},
-	Mixins: []moleculer.Mixin{db.Mixin(&db.MongoAdapter{
+	Mixins: []moleculer.Mixin{store.Mixin(&mongo.MongoAdapter{
 		MongoURL:   MongoURL,
 		Collection: "contacts",
 		Database:   "whatsapp",

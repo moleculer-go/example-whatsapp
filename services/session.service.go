@@ -3,7 +3,8 @@ package services
 import (
 	"time"
 
-	db "github.com/moleculer-go/moleculer-db"
+	"github.com/moleculer-go/store"
+	"github.com/moleculer-go/store/mongo"
 
 	"github.com/moleculer-go/moleculer"
 )
@@ -16,7 +17,7 @@ var Session = moleculer.ServiceSchema{
 	Settings: map[string]interface{}{
 		"fields": []string{"id", "deviceToken", "content"},
 	},
-	Mixins: []moleculer.Mixin{db.Mixin(&db.MongoAdapter{
+	Mixins: []moleculer.Mixin{store.Mixin(&mongo.MongoAdapter{
 		MongoURL:   MongoURL,
 		Collection: "session",
 		Database:   "whatsapp",
