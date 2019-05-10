@@ -11,7 +11,7 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-var connectionDuration = 2 * time.Minute
+var connectionDuration = 10 * time.Minute
 
 var connections *cache.Cache
 
