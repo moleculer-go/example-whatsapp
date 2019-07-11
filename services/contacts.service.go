@@ -214,11 +214,11 @@ func loadContacts(context moleculer.Context, params moleculer.Payload) {
 	context.Logger().Debug("[contacts.service] Before wac.Contacts() ")
 
 	fmt.Printf("[contacts.service] wac.Store memory # %p ", wac.Store)
-	wac.Store.OnUpdateContacts(func(contacts map[string]whatsapp.Contact) {
-		context.Logger().Debug("[contacts.service] OnUpdateContacts handler called - # contacts: ", len(contacts))
-		for _, contact := range wac.Store.Contacts {
-			createContact(context, deviceToken, contact)
-		}
-	})
+	// wac.Store.OnUpdateContacts(func(contacts map[string]whatsapp.Contact) {
+	// 	context.Logger().Debug("[contacts.service] OnUpdateContacts handler called - # contacts: ", len(contacts))
+	// 	for _, contact := range wac.Store.Contacts {
+	// 		createContact(context, deviceToken, contact)
+	// 	}
+	// })
 	_, err = wac.Contacts()
 }
