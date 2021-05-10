@@ -15,7 +15,7 @@
     "helmet": "^3.22.0",
     "isomorphic-unfetch": "^3.0.0",
     "mdbreact": "^4.11.1",
-    "next": "^8.0.4",
+    "next": "^9.3.2",
     "next-compose-plugins": "^2.1.1",
     "next-fonts": "^0.17.0",
     "next-images": "^1.1.1",
